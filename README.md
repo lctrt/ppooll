@@ -5,22 +5,17 @@ This is a mirror of the ppooll 8.1 files. Put those files into `Max 8/Packages/`
 open the Max Package Manager from the File-Menu (Show Package Manager)
 and install the following packages there online:
 
-jasch
-
-CNMAT
-
-ICST
+* jasch
+* CNMAT
+* ICST
 
 and for some special acts, you would also need the packages:
-cv.jit
 
-karma
-
-link
-
-LowkeyNW
-
-PeRColate
+* cv.jit
+* karma
+* link
+* LowkeyNW
+* PeRColate
 
 then open ppooll_host from the Extras-Menu of Max.
 
