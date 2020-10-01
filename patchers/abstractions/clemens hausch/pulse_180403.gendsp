@@ -1,0 +1,166 @@
+{
+	"patcher" : 	{
+		"fileversion" : 1,
+		"appversion" : 		{
+			"major" : 7,
+			"minor" : 3,
+			"revision" : 4,
+			"architecture" : "x86",
+			"modernui" : 1
+		}
+,
+		"rect" : [ 426.0, 78.0, 1121.0, 899.0 ],
+		"editing_bgcolor" : [ 0.9, 0.9, 0.9, 1.0 ],
+		"bglocked" : 0,
+		"openinpresentation" : 0,
+		"default_fontsize" : 12.0,
+		"default_fontface" : 0,
+		"default_fontname" : "Arial",
+		"gridonopen" : 1,
+		"gridsize" : [ 15.0, 15.0 ],
+		"gridsnaponopen" : 1,
+		"objectsnaponopen" : 1,
+		"statusbarvisible" : 2,
+		"toolbarvisible" : 1,
+		"lefttoolbarpinned" : 0,
+		"toptoolbarpinned" : 0,
+		"righttoolbarpinned" : 0,
+		"bottomtoolbarpinned" : 0,
+		"toolbars_unpinned_last_save" : 0,
+		"tallnewobj" : 0,
+		"boxanimatetime" : 200,
+		"enablehscroll" : 1,
+		"enablevscroll" : 1,
+		"devicewidth" : 0.0,
+		"description" : "",
+		"digest" : "",
+		"tags" : "",
+		"style" : "",
+		"subpatcher_template" : "",
+		"boxes" : [ 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-5",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 519.0, 831.0, 223.0, 22.0 ],
+					"style" : "",
+					"text" : "out 4 @comment periodwidth (samples)"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-6",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 41.0, 23.0, 167.0, 22.0 ],
+					"style" : "",
+					"text" : "in 1 @comment sync (period)"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-2",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 340.0, 831.0, 177.0, 22.0 ],
+					"style" : "",
+					"text" : "out 3 @comment clock (period)"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-1",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 167.0, 831.0, 171.0, 22.0 ],
+					"style" : "",
+					"text" : "out 2 @comment trigger pulse"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"code" : "globalPeriod (period) {\n\tfreq = 1000. / period;\n\tcurrentPeriod = phasor(freq, 0);\n\treturn currentPeriod;\n}\n\npulseTrain (clock, stepSize, multiply, phase, duty, timingVarNeg, timingVarPos) {\n\tDelay delay_1(samplerate);\n\t// negative delay\n\tnegDelaySamps = samplerate / 100;\n\tnegDelay = stepSize * negDelaySamps;\n\t// early pulse\n\tlocalClock = wrap( ((clock - phase + negDelay) * multiply), 0, 1);\n\tpulseBase = triangle(localClock, 0.0);\n\tduty_inv = scale(duty, 0, 1, 1, 0);\n\tpulse = (pulseBase > duty_inv);\n\tdelay_1.write(pulse);\n\t// corrected pulse\n\tif (timingVarNeg == 0 && timingVarPos == 0) {\n\t\tdelayTime = negDelaySamps;\n\t\tdelayedPulse = delay_1.read(negDelaySamps, interp=\"cosine\");\n\t\trandomValue, scaledRandomValue = 0;\n\t\treturn delayedPulse, delayTime, randomValue, scaledRandomValue;\n\t} else {\n\t\trandomValue = sah(noise(), pulse, 0.5);\n\t\tscaledRandomValue = scale(randomValue, -1, 1, timingVarNeg, timingVarPos);\n\t\tdelayTime = scale(scaledRandomValue, -1, 1, 0, negDelaySamps * 2);\n\t\tdelayedPulse = delay_1.read(delayTime, interp=\"cosine\");\n\t\treturn delayedPulse, delayTime, randomValue, scaledRandomValue;\n\t}\n\t// return delayedPulse;\n}\n\npulseLevelMod (pulse, level, levelMod) {\n\trandomValue = sah(noise(), pulse, 0.5);\n\tmodValue = abs(randomValue) * levelMod;\n\tmodPulse = pulse * (level * (1 - modValue));\n\treturn modPulse; //modPulseWave;\n}\n\nrampsmooth(value, rampUp, rampDown) {\n\t// by Mauricio Giri\n\t// https://cycling74.com/forums/topic/rampsmooth-in-gen/\n\t\n\tHistory last(0.);\n\tHistory dirflag(0);\n\tHistory stepcounter(0);\n\tHistory increment(0.);\n\n\t// deltavar = 0; \n\t// non serve dichiararlo perché viene inizializzato nell'else\n\n\tinsig = value;\n\trampup = max(rampUp, 1);\n\trampdown = max(rampDown, 1);\n\toutsig = last;\n\n\t// se il delta è uguale a 0 e non ci sono modifiche ai tempi di rampsmooth \n\t// si procede con il precedente incremento\n\tif((delta(insig) == 0) && (delta(rampup)==0) && (delta(rampdown)==0)) {\n\t\tif (dirflag > 0) {\n\t\t\tif (stepcounter < rampup) {\n\t\t\t\toutsig += increment;\n\t\t\t\tstepcounter += 1;\n\t\t\t} else { outsig = insig; }\n\t\t} else if (stepcounter < rampdown) {\n\t\t\t\toutsig += increment;\n\t\t\t\tstepcounter += 1;\n\t\t} else { outsig = insig; }\n\t\t\t\n\t} \n\t// altrimenti si verifica se il segnale deve salire o scendere\n\t// e si incrementa opportunamente\n\t// outsig rappresenta l'uscita precedente\n\telse {\n\t\tdeltavar = insig - outsig;\n\t\tif (deltavar > 0) {\n\t\t\tincrement = deltavar / rampup;\n\t\t\toutsig += increment;\n\t\t\tstepcounter = 1;\n\t\t\tdirflag = 1;\n\t\t\n\t\t} else {\n\t\t\tincrement = deltavar / rampdown;\n\t\t\toutsig += increment;\n\t\t\tstepcounter = 1;\n\t\t\tdirflag = -1;\n\t\t}\n\t} \n\n\tlast = outsig;\n\treturn outsig;\n}\n\nstepCalc(clock) {\n\tHistory lastPeriodSample(0);\n\ttriWave = triangle(clock, 0.5);\n\tstepSize = absdiff(triWave, lastPeriodSample);\n\tlastPeriodSampleNext = triWave;\n\tlastPeriodSample = lastPeriodSampleNext;\n\treturn stepSize;\n}\n\n// global\nParam period(1000);\nParam syncMode(0, min=0, max=1);\nParam mixMode(0, min=0, max=1);\n// pulse 1\nParam p1_multiply(1, min=0);\nParam p1_phase(0, min=0, max=1);\nParam p1_duty(0, min=0, max=1);\nParam p1_level(0., min=0., max=1.);\nParam p1_levelMod(0, min=0, max=1);\n//Param p1_levelModMax(1, min=0, max=1);\nParam p1_timingVarNeg(0, min=-1, max=0);\nParam p1_timingVarPos(0, min=0, max=1);\nParam p1_att(0, min=0);\nParam p1_smoo(0, min=0, max=1);\nParam p1_dec(0, min=0);\n\nextPeriod = in1;\nclock = syncMode ? extPeriod : (globalPeriod(period));\nstepSize = stepCalc(clock);\n\npulse1 = pulseTrain(clock, stepSize, p1_multiply, p1_phase, p1_duty, p1_timingVarNeg, p1_timingVarPos);\npulse1_mod = pulseLevelMod(pulse1, p1_level, p1_levelMod);\npulse1_smooth = rampsmooth(pulse1_mod, p1_att, p1_dec);\n\n\nout1 = pulse1_smooth;\nout2 = pulse1;\nout3 = clock;\n\nout4 = mstosamps (period);",
+					"fontface" : 0,
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-3",
+					"maxclass" : "codebox",
+					"numinlets" : 1,
+					"numoutlets" : 4,
+					"outlettype" : [ "", "", "", "" ],
+					"patching_rect" : [ 41.0, 52.0, 886.0, 770.0 ],
+					"style" : ""
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Arial",
+					"fontsize" : 12.0,
+					"id" : "obj-4",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 41.0, 831.0, 124.0, 22.0 ],
+					"style" : "",
+					"text" : "out 1 @comment mix"
+				}
+
+			}
+ ],
+		"lines" : [ 			{
+				"patchline" : 				{
+					"destination" : [ "obj-1", 0 ],
+					"source" : [ "obj-3", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-2", 0 ],
+					"source" : [ "obj-3", 2 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-4", 0 ],
+					"source" : [ "obj-3", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 0 ],
+					"source" : [ "obj-3", 3 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-3", 0 ],
+					"source" : [ "obj-6", 0 ]
+				}
+
+			}
+ ]
+	}
+
+}
